@@ -1,5 +1,7 @@
 package com.example.bio_backend.service;
 
+import com.example.bio_backend.config.JwtService;
+import com.example.bio_backend.config.UtilisateurDetailsImpl;
 import com.example.bio_backend.dto.AuthResponse;
 import com.example.bio_backend.dto.LoginRequest;
 import com.example.bio_backend.dto.RegisterRequest;
@@ -36,6 +38,14 @@ import org.springframework.transaction.annotation.Transactional;
  *     passe directement au statut "VERIFIE" (voir inscrireClient) pour que
  *     le futur controle d'acces cote achat (statutVerificationCnib ==
  *     "VERIFIE") fonctionne de la meme facon pour les deux roles.
+ *
+ * Module Securite (2026-09-18) : chaque reponse (inscription ET connexion)
+ * contient desormais un token JWT, genere via JwtService. Note qu'on ne
+ * verifie PAS le mot de passe via Spring Security's AuthenticationManager --
+ * on garde notre propre verification manuelle (passwordEncoder.matches())
+ * ci-dessous, et on se contente d'emettre un token une fois cette
+ * verification passee. C'est SecurityConfig qui, lui, protege les routes en
+ * validant ce token sur les requetes suivantes.
  */
 @Service
 public class AuthService {
@@ -45,17 +55,20 @@ public class AuthService {
     private final ClientRepository clientRepository;
     private final NotificationRepository notificationRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
 
     public AuthService(UtilisateurRepository utilisateurRepository,
                         ProducteurRepository producteurRepository,
                         ClientRepository clientRepository,
                         NotificationRepository notificationRepository,
-                        PasswordEncoder passwordEncoder) {
+                        PasswordEncoder passwordEncoder,
+                        JwtService jwtService) {
         this.utilisateurRepository = utilisateurRepository;
         this.producteurRepository = producteurRepository;
         this.clientRepository = clientRepository;
         this.notificationRepository = notificationRepository;
         this.passwordEncoder = passwordEncoder;
+        this.jwtService = jwtService;
     }
 
     @Transactional
@@ -155,10 +168,8 @@ public class AuthService {
         // encore EN_ATTENTE (il doit pouvoir se connecter pour voir son
         // statut) ; un Client, lui, est toujours VERIFIE des la creation.
         // C'est au moment des actions sensibles (achat, vente, paiement) que
-        // statutVerificationCnib doit etre verifie -- pas ici. Voir la note
-        // de vigilance metier sur le diagramme de sequence "Processus
-        // d'Achat" : ce controle reste a implementer dans le futur module
-        // Commandes/Produits.
+        // statutVerificationCnib doit etre verifie -- deja cable dans
+        // ProduitService/CommandeService/PaiementService.
         return versReponse(utilisateur);
     }
 
@@ -166,7 +177,7 @@ public class AuthService {
      * Determine le role a partir du type reel de l'objet (grace a
      * l'heritage JOINED, "utilisateur" est en memoire une vraie instance de
      * Producteur, Client ou Administrateur, meme si la variable est typee
-     * Utilisateur).
+     * Utilisateur) et genere le token JWT correspondant.
      */
     private AuthResponse versReponse(Utilisateur utilisateur) {
         String role;
@@ -178,13 +189,16 @@ public class AuthService {
             role = "ADMINISTRATEUR";
         }
 
+        String token = jwtService.genererToken(new UtilisateurDetailsImpl(utilisateur));
+
         return new AuthResponse(
                 utilisateur.getId(),
                 utilisateur.getNom(),
                 utilisateur.getPrenom(),
                 utilisateur.getEmail(),
                 role,
-                utilisateur.getStatutVerificationCnib()
+                utilisateur.getStatutVerificationCnib(),
+                token
         );
     }
 }

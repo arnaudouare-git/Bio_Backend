@@ -2,8 +2,10 @@ package com.example.bio_backend.dto;
 
 /**
  * Reponse renvoyee apres inscription ou connexion reussie.
- * Pas de token JWT pour l'instant : la securite complete (Spring Security,
- * roles, tokens) est prevue comme etape "Plus tard" dans le recap projet.
+ *
+ * Depuis le module Securite (2026-09-18) : contient un "token" JWT. C'est
+ * ce token qu'il faut renvoyer dans le header "Authorization: Bearer
+ * <token>" de toute requete vers une route protegee (voir SecurityConfig).
  */
 public class AuthResponse {
 
@@ -13,14 +15,17 @@ public class AuthResponse {
     private String email;
     private String role;
     private String statutVerificationCnib;
+    private String token;
 
-    public AuthResponse(Long id, String nom, String prenom, String email, String role, String statutVerificationCnib) {
+    public AuthResponse(Long id, String nom, String prenom, String email, String role,
+                         String statutVerificationCnib, String token) {
         this.id = id;
         this.nom = nom;
         this.prenom = prenom;
         this.email = email;
         this.role = role;
         this.statutVerificationCnib = statutVerificationCnib;
+        this.token = token;
     }
 
     public Long getId() {
@@ -45,5 +50,9 @@ public class AuthResponse {
 
     public String getStatutVerificationCnib() {
         return statutVerificationCnib;
+    }
+
+    public String getToken() {
+        return token;
     }
 }

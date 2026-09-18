@@ -29,6 +29,10 @@ public class Paiement {
     @Column(nullable = false)
     private BigDecimal montant;
 
+    /** Moyen de paiement : "ORANGE_MONEY" ou "CASH" (especes a la livraison). */
+    @Column(length = 30, nullable = false)
+    private String methode;
+
     @ManyToOne
     @JoinColumn(name = "commande_id", nullable = false)
     private Commande commande;
@@ -81,6 +85,14 @@ public class Paiement {
 
     public void setMontant(BigDecimal montant) {
         this.montant = montant;
+    }
+
+    public String getMethode() {
+        return methode;
+    }
+
+    public void setMethode(String methode) {
+        this.methode = methode;
     }
 
     public Commande getCommande() {

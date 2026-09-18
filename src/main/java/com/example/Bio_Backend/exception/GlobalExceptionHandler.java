@@ -44,6 +44,21 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
+    @ExceptionHandler(CompteNonVerifieException.class)
+    public ResponseEntity<Object> handleCompteNonVerifie(CompteNonVerifieException ex) {
+        return buildResponse(HttpStatus.FORBIDDEN, ex.getMessage());
+    }
+
+    @ExceptionHandler(StockInsuffisantException.class)
+    public ResponseEntity<Object> handleStockInsuffisant(StockInsuffisantException ex) {
+        return buildResponse(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(PaiementDejaTraiteException.class)
+    public ResponseEntity<Object> handlePaiementDejaTraite(PaiementDejaTraiteException ex) {
+        return buildResponse(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
     private ResponseEntity<Object> buildResponse(HttpStatus status, String message) {
         Map<String, Object> body = Map.of(
                 "timestamp", Instant.now().toString(),
