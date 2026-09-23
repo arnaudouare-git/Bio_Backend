@@ -59,6 +59,16 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.CONFLICT, ex.getMessage());
     }
 
+    @ExceptionHandler(ProduitNonProprietaireException.class)
+    public ResponseEntity<Object> handleProduitNonProprietaire(ProduitNonProprietaireException ex) {
+        return buildResponse(HttpStatus.FORBIDDEN, ex.getMessage());
+    }
+
+    @ExceptionHandler(CommandeAccesRefuseException.class)
+    public ResponseEntity<Object> handleCommandeAccesRefuse(CommandeAccesRefuseException ex) {
+        return buildResponse(HttpStatus.FORBIDDEN, ex.getMessage());
+    }
+
     private ResponseEntity<Object> buildResponse(HttpStatus status, String message) {
         Map<String, Object> body = Map.of(
                 "timestamp", Instant.now().toString(),

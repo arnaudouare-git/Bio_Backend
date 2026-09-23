@@ -3,9 +3,12 @@ package com.example.bio_backend.service;
 import com.example.bio_backend.dto.CreerProduitRequest;
 import com.example.bio_backend.dto.ModifierProduitRequest;
 import com.example.bio_backend.dto.ProduitResponse;
+import com.example.bio_backend.entity.Administrateur;
 import com.example.bio_backend.entity.Produit;
 import com.example.bio_backend.entity.Producteur;
+import com.example.bio_backend.entity.Utilisateur;
 import com.example.bio_backend.exception.CompteNonVerifieException;
+import com.example.bio_backend.exception.ProduitNonProprietaireException;
 import com.example.bio_backend.exception.RessourceIntrouvableException;
 import com.example.bio_backend.repository.ProducteurRepository;
 import com.example.bio_backend.repository.ProduitRepository;
@@ -80,11 +83,22 @@ public class ProduitService {
                 .toList();
     }
 
+    /**
+     * Modifie un produit existant.
+     *
+     * "demandeur" est l'utilisateur authentifie via le token JWT de la
+     * requete (voir ProduitController), pas une valeur envoyee dans le
+     * body -- impossible donc de se faire passer pour quelqu'un d'autre.
+     * Un Producteur ne peut modifier que SES PROPRES produits ; un
+     * Administrateur peut modifier n'importe lequel (moderation).
+     */
     @Transactional
-    public ProduitResponse modifierProduit(Long produitId, ModifierProduitRequest requete) {
+    public ProduitResponse modifierProduit(Long produitId, ModifierProduitRequest requete, Utilisateur demandeur) {
         Produit produit = produitRepository.findById(produitId)
                 .orElseThrow(() -> new RessourceIntrouvableException(
                         "Produit introuvable : id=" + produitId));
+
+        verifierProprietaireOuAdmin(produit, demandeur);
 
         produit.setNom(requete.getNom());
         produit.setEtat(requete.getEtat());
@@ -95,12 +109,33 @@ public class ProduitService {
         return versReponse(enregistre);
     }
 
+    /** Meme regle de propriete que modifierProduit() ci-dessus -- voir sa javadoc. */
     @Transactional
-    public void supprimerProduit(Long produitId) {
-        if (!produitRepository.existsById(produitId)) {
-            throw new RessourceIntrouvableException("Produit introuvable : id=" + produitId);
+    public void supprimerProduit(Long produitId, Utilisateur demandeur) {
+        Produit produit = produitRepository.findById(produitId)
+                .orElseThrow(() -> new RessourceIntrouvableException("Produit introuvable : id=" + produitId));
+
+        verifierProprietaireOuAdmin(produit, demandeur);
+
+        produitRepository.delete(produit);
+    }
+
+    /**
+     * Controle d'acces cable le 2026-09-22, une fois le module Securite
+     * (JWT) disponible : avant, n'importe quel appelant pouvait modifier ou
+     * supprimer n'importe quel produit simplement en connaissant son id
+     * (dette technique notee depuis l'ecriture initiale du module
+     * Produits). Desormais, on compare le proprietaire reel du produit en
+     * base a l'utilisateur authentifie de la requete.
+     */
+    private void verifierProprietaireOuAdmin(Produit produit, Utilisateur demandeur) {
+        if (demandeur instanceof Administrateur) {
+            return;
         }
-        produitRepository.deleteById(produitId);
+        if (!produit.getProducteur().getId().equals(demandeur.getId())) {
+            throw new ProduitNonProprietaireException(
+                    "Vous ne pouvez modifier ou supprimer que vos propres produits.");
+        }
     }
 
     private ProduitResponse versReponse(Produit produit) {

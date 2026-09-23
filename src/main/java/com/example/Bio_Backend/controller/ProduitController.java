@@ -1,11 +1,13 @@
 package com.example.bio_backend.controller;
 
+import com.example.bio_backend.config.UtilisateurDetailsImpl;
 import com.example.bio_backend.dto.CreerProduitRequest;
 import com.example.bio_backend.dto.ModifierProduitRequest;
 import com.example.bio_backend.dto.ProduitResponse;
 import com.example.bio_backend.service.ProduitService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -41,9 +43,13 @@ import java.util.List;
  *   "prixUnitaire": 550,
  *   "stock": 80
  * }
+ * -> 200 si l'appelant (via son token JWT) est le Producteur proprietaire
+ *    du produit, ou un Administrateur.
+ * -> 403 FORBIDDEN si c'est un AUTRE Producteur (verification cablee le
+ *    2026-09-22, voir ProduitService.verifierProprietaireOuAdmin).
  *
  * DELETE http://localhost:8080/api/produits/1
- * -> 204 No Content.
+ * -> 204 No Content (meme regle de propriete que PUT ci-dessus).
  */
 @RestController
 @RequestMapping("/api/produits")
@@ -73,13 +79,15 @@ public class ProduitController {
 
     @PutMapping("/{produitId}")
     public ResponseEntity<ProduitResponse> modifier(@PathVariable Long produitId,
-                                                     @RequestBody ModifierProduitRequest requete) {
-        return ResponseEntity.ok(produitService.modifierProduit(produitId, requete));
+                                                     @RequestBody ModifierProduitRequest requete,
+                                                     @AuthenticationPrincipal UtilisateurDetailsImpl principal) {
+        return ResponseEntity.ok(produitService.modifierProduit(produitId, requete, principal.getUtilisateur()));
     }
 
     @DeleteMapping("/{produitId}")
-    public ResponseEntity<Void> supprimer(@PathVariable Long produitId) {
-        produitService.supprimerProduit(produitId);
+    public ResponseEntity<Void> supprimer(@PathVariable Long produitId,
+                                           @AuthenticationPrincipal UtilisateurDetailsImpl principal) {
+        produitService.supprimerProduit(produitId, principal.getUtilisateur());
         return ResponseEntity.noContent().build();
     }
 }

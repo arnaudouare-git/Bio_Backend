@@ -7,6 +7,12 @@ import java.math.BigDecimal;
  * Detail d'une commande : un produit + une quantite.
  * Le prix_unitaire est duplique ici (au moment de l'achat)
  * pour rester correct meme si le prix du Produit change plus tard.
+ *
+ * "statut" (ajoute le 2026-09-23) : chaque ligne suit desormais son propre
+ * statut (EN_ATTENTE, CONFIRMEE, EN_PREPARATION, EXPEDIEE, LIVREE, ANNULEE),
+ * pour que le Producteur qui possede ce produit puisse faire avancer SA
+ * ligne sans toucher aux lignes des autres Producteurs dans la meme
+ * commande. Voir CommandeService.changerStatutLigne().
  */
 @Entity
 @Table(name = "lignes_commande")
@@ -22,6 +28,9 @@ public class LigneCommande {
     @Column(name = "prix_unitaire", nullable = false)
     private BigDecimal prixUnitaire;
 
+    @Column(length = 30)
+    private String statut;
+
     @ManyToOne
     @JoinColumn(name = "commande_id", nullable = false)
     private Commande commande;
@@ -29,6 +38,13 @@ public class LigneCommande {
     @ManyToOne
     @JoinColumn(name = "produit_id", nullable = false)
     private Produit produit;
+
+    @PrePersist
+    protected void onCreate() {
+        if (this.statut == null) {
+            this.statut = "EN_ATTENTE";
+        }
+    }
 
     // ---------- getters / setters ----------
 
@@ -70,5 +86,13 @@ public class LigneCommande {
 
     public void setProduit(Produit produit) {
         this.produit = produit;
+    }
+
+    public String getStatut() {
+        return statut;
+    }
+
+    public void setStatut(String statut) {
+        this.statut = statut;
     }
 }
