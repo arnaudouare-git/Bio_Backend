@@ -1,0 +1,45 @@
+# Lancement complet du backend BioConversion (API + base PostgreSQL) en une
+# seule commande, sans avoir besoin d'installer Java, Maven ou PostgreSQL :
+#
+#   docker compose up --build
+#
+# API disponible ensuite sur http://localhost:8080 (voir le README, section 3,
+# pour la version d'installation manuelle sans Docker).
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: bioconversion_db
+    environment:
+      POSTGRES_DB: bioconversion_db
+      POSTGRES_USER: bioconversion
+      POSTGRES_PASSWORD: bioconversion_dev_pwd
+    ports:
+      - "5432:5432"
+    volumes:
+      - bioconversion_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bioconversion -d bioconversion_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: .
+    container_name: bioconversion_backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Ces variables d'environnement surchargent automatiquement les valeurs
+      # de application.properties (mecanisme standard Spring Boot), donc ce
+      # fichier n'a JAMAIS besoin d'etre modifie pour tourner en Docker.
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/bioconversion_db
+      SPRING_DATASOURCE_USERNAME: bioconversion
+      SPRING_DATASOURCE_PASSWORD: bioconversion_dev_pwd
+      JWT_SECRET: change-moi-avant-toute-demo-publique-chaine-aleatoire-longue
+    ports:
+      - "8080:8080"
+
+volumes:
+  bioconversion_pgdata:

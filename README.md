@@ -63,6 +63,20 @@ Ce dépôt contient uniquement le **backend**. Le frontend (Angular) vivra dans 
    (ou double-cliquer sur `run.bat` sous Windows, qui fait exactement ça). Le `clean` n'est pas optionnel — voir [Problèmes connus](#problèmes-connus-et-astuces).
 5. L'API est prête sur **`http://localhost:8080`**. Hibernate crée automatiquement les tables au premier démarrage (`ddl-auto=update`).
 
+### Alternative recommandée : lancer avec Docker (une seule commande)
+
+Pour éviter à quelqu'un d'installer Java, Maven et PostgreSQL à la main, le dépôt fournit un `Dockerfile` + `docker-compose.yml` qui démarrent l'API **et** la base PostgreSQL ensemble :
+
+```
+docker compose up --build
+```
+
+Ça construit l'image du backend (build Maven multi-étapes), lance une base PostgreSQL vierge dans un conteneur séparé, attend qu'elle soit prête, puis démarre l'API — accessible sur `http://localhost:8080` comme en installation manuelle. Rien à installer à part Docker (et Docker Compose, inclus avec Docker Desktop).
+
+Les identifiants de la base et le secret JWT utilisés par Docker sont définis directement dans `docker-compose.yml` (valeurs de développement uniquement, à changer avant toute démo publique) — `application.properties` n'a besoin d'aucune modification, les variables d'environnement le surchargent automatiquement.
+
+Pour tout arrêter : `docker compose down` (ajouter `-v` pour aussi supprimer les données PostgreSQL du volume).
+
 ---
 
 ## 4. Utilisation & exemples
