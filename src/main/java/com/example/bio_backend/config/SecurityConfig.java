@@ -9,8 +9,12 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.time.Instant;
+import java.util.List;
 
 /**
  * Point CENTRAL de la securite de l'API : QUI a le droit d'appeler QUEL
@@ -24,6 +28,13 @@ import java.time.Instant;
  * PasswordEncoder.matches(), voir AuthService.connecter()) au moment du
  * login. Cette classe ne s'occupe que de PROTEGER les routes APRES la
  * connexion, via le token JWT deja emis.
+ *
+ * CORS (ajoute le 2026-09-26) : le frontend Angular (ng serve, port 4200)
+ * et le backend (port 8080) sont deux origines differentes du point de vue
+ * du navigateur. Sans configuration CORS explicite, le navigateur bloque
+ * silencieusement toutes les reponses de l'API -- meme si le serveur les
+ * traite correctement. Necessaire des qu'un frontend web appelle cette API
+ * depuis un port different.
  */
 @Configuration
 @EnableWebSecurity
@@ -36,12 +47,32 @@ public class SecurityConfig {
     }
 
     @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        // Origines autorisees a appeler l'API. localhost:4200 = ng serve (dev).
+        // A completer avec l'URL de prod le jour ou le frontend est deploye.
+        configuration.setAllowedOrigins(List.of("http://localhost:4200"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
+
+    @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 // API stateless (pas de session HTTP, pas de cookie) -> pas besoin de protection CSRF.
                 .csrf(csrf -> csrf.disable())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // 0. Requetes preflight CORS (OPTIONS) : toujours publiques, sinon le
+                        // navigateur n'obtient jamais l'autorisation avant d'envoyer la vraie requete.
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
                         // 1. Inscription/connexion : forcement public (on n'a pas encore de token avant !)
                         .requestMatchers("/api/auth/**").permitAll()
 
